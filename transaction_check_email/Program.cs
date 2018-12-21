@@ -27,7 +27,7 @@ namespace transaction_check_email
                     },
                     new User
                     {
-                        Email="peter@mail.ru",
+                        Email="peter.mail.ru", //peter@mail.ru
                         FirstName="Petro",
                         LastName="Gugle",
                     },
@@ -50,53 +50,21 @@ namespace transaction_check_email
                         string query = "";
                         foreach (var user in users)
                         {
-
-                            int statusId = 0;
-                            query = "SELECT Id FROM tblStatus " +
-                                $"WHERE Name='{doctor.Status}'";
-                            command.CommandText = query;
-                            SqlDataReader reader = command.ExecuteReader();
-                            if (reader.Read())
+                            //якщо імейл валідний - додаємо в базу
+                            if (EmailChecker(user.Email))
                             {
-                                statusId = int
-                                    .Parse(reader["Id"].ToString());
-                            }
-                            reader.Close();
-                            if (statusId == 0)
-                            {
-                                query = "INSERT INTO [dbo].[tblStatus] " +
-                                    $"([Name]) VALUES ('{doctor.Status}')";
+                                query = "INSERT INTO [dbo].[tblUsers] ([Firstname],[Lastname],[Email]) " +
+                                $"VALUES ('{user.FirstName}','{user.LastName}','{user.Email}')";
                                 command.CommandText = query;
-                                var count = command.ExecuteNonQuery();
-                                if (count == 1)
-                                {
-                                    query = "SELECT SCOPE_IDENTITY() AS LastId";
-                                    command.CommandText = query;
-                                    reader = command.ExecuteReader();
-                                    if (reader.Read())
-                                    {
-                                        statusId = int
-                                            .Parse(reader["LastId"].ToString());
-                                        Console.WriteLine("LastId = {0}", statusId);
-                                    }
-                                    reader.Close();
-                                }
-                                else { throw new Exception($"Проблема при добавлені статуса {doctor.FirstName}"); }
+                                command.ExecuteNonQuery();
+                            }
+                            else //інакше скасовуємо і жоден запис з масиву не зявиться в базі
+                            {
+                                Console.WriteLine("\nWrong Email!");
                             }
 
-                            if (string.IsNullOrEmpty(doctor.Email))
-                                throw new Exception($"Помилка при добавелі лікаря {doctor.Email}");
-                            query = "INSERT INTO [dbo].[tblDoctor] " +
-                                "([StatusId],[FirstName],[LastName],[Email],[Kabinet]) " +
-                                $"VALUES ({statusId},'{doctor.FirstName}'," +
-                                $"'{doctor.LastName}','{doctor.Email}','{doctor.Kabinet}')";
-                            command.CommandText = query;
-                            var res = command.ExecuteNonQuery();
-                            if (res != 1)
-                                throw new Exception($"Помилка при добавелі лікаря {doctor.Email}");
                         }
-
-
+                        
                     }
 
                     scope.Complete();
@@ -108,16 +76,18 @@ namespace transaction_check_email
             }
 
         }
+
+        // метод валідності емейлу
+        public static bool EmailChecker(string email)
+        {
+            MailAddress mail = new MailAddress(email);
+            if (mail.Address == email)
+                return true;
+            else
+                return false;
+        }
     }
 
-    // метод валідності емейлу
-    static bool EmailChecker(string email)
-    {
-        MailAddress mail = new MailAddress(email);
-        if (mail.Address == email)
-            return true;
-        else
-            return false;
-    }
+    
 
 }
